@@ -1,6 +1,8 @@
 package ru.sberbank.learning.networkservice;
 
 import android.app.IntentService;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.Environment;
@@ -22,6 +24,9 @@ public class DownloadService extends IntentService {
 
     public static final String EXTRA_FILE_NAME = "file_name";
     public static final String ACTION_STATE_CHANGED = "download_state_changed";
+
+    private static final int NOTIFICATION_ID = 0;
+    private boolean foregroundMode = false;
 
     private boolean completed = false;
     private boolean withErrors = false;
@@ -90,6 +95,13 @@ public class DownloadService extends IntentService {
 
             if (percent != progress) {
                 progress = percent;
+
+                if (foregroundMode) {
+                    Notification notification = buildNotification();
+                    NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                    nm.notify(NOTIFICATION_ID, notification);
+                }
+
                 notifyStateChanged();
             }
 
@@ -111,6 +123,14 @@ public class DownloadService extends IntentService {
         LocalBroadcastManager.getInstance(this).sendBroadcast(data);
     }
 
+    private Notification buildNotification() {
+        Notification.Builder builder = new Notification.Builder(this);
+        builder.setSmallIcon(R.drawable.ic_stat_download, progress * 100);
+        builder.setProgress(100, progress, false);
+        builder.setContentTitle(getString(R.string.notification_downloading));
+        return builder.build();
+    }
+
     public class LocalBinder extends Binder {
 
         public boolean isCompleted() {
@@ -123,6 +143,17 @@ public class DownloadService extends IntentService {
 
         public int getProgress() {
             return progress;
+        }
+
+        public void setForeground(boolean foreground) {
+
+            if (foreground) {
+                startForeground(NOTIFICATION_ID, buildNotification());
+            } else {
+                stopForeground(true);
+            }
+
+            foregroundMode = foreground;
         }
     }
 }

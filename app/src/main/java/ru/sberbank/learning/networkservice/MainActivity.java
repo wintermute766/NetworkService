@@ -26,6 +26,7 @@ public class MainActivity extends Activity {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             binder = (DownloadService.LocalBinder) service;
+            binder.setForeground(false);
             displayState();
         }
 
@@ -89,6 +90,7 @@ public class MainActivity extends Activity {
 
         IntentFilter filter = new IntentFilter(DownloadService.ACTION_STATE_CHANGED);
         LocalBroadcastManager.getInstance(this).registerReceiver(changesReceiver, filter);
+        displayState();
     }
 
     @Override
@@ -96,6 +98,7 @@ public class MainActivity extends Activity {
         super.onStop();
 
         if (binder != null) {
+            binder.setForeground(true);
             unbindService(connection);
         }
 

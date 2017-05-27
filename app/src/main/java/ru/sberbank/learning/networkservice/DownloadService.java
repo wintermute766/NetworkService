@@ -50,9 +50,13 @@ public class DownloadService extends IntentService {
 
         try {
             downloadFile(url, fileName);
+            withErrors = false;
+            progress = 100;
         } catch (IOException e) {
-            e.printStackTrace();
-            return;
+            withErrors = true;
+            progress = 0;
+        } finally {
+            completed = true;
         }
 
     }

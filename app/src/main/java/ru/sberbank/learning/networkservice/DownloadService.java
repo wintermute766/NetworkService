@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 
 public class DownloadService extends IntentService {
@@ -36,7 +37,23 @@ public class DownloadService extends IntentService {
     @Override
     protected void onHandleIntent(Intent intent) {
 
+        URL url;
 
+        try {
+            url = new URL(intent.getDataString());
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        String fileName = intent.getStringExtra(EXTRA_FILE_NAME);
+
+        try {
+            downloadFile(url, fileName);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
 
     }
 

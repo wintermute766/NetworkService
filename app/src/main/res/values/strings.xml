@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">NetworkService</string>
+    <string name="button_download">Загрузить</string>
+</resources>

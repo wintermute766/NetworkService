@@ -2,8 +2,11 @@ package ru.sberbank.learning.networkservice;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -11,6 +14,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.content.PermissionChecker;
 import android.view.View;
 import android.widget.ProgressBar;
@@ -22,11 +26,21 @@ public class MainActivity extends Activity {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             binder = (DownloadService.LocalBinder) service;
+            displayState();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             binder = null;
+        }
+    };
+
+    private BroadcastReceiver changesReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (DownloadService.ACTION_STATE_CHANGED.equals(intent.getAction())) {
+                displayState();
+            }
         }
     };
 
@@ -53,6 +67,9 @@ public class MainActivity extends Activity {
                 startDownload();
             }
         });
+
+        progressBar = (ProgressBar) findViewById(R.id.progress);
+        progressBar.setMax(100);
     }
 
     private void startDownload() {
@@ -60,6 +77,7 @@ public class MainActivity extends Activity {
         service.setData(Uri.parse("http://droider.ru/wp-content/uploads/2017/03/AndroidPIT-android-O-Oreo-2083.jpg"));
         service.putExtra(DownloadService.EXTRA_FILE_NAME, "android.jpg");
         startService(service);
+        bindService(service, connection, 0);
     }
 
     @Override
@@ -68,6 +86,9 @@ public class MainActivity extends Activity {
 
         Intent service = new Intent(this, DownloadService.class);
         bindService(service, connection, 0);
+
+        IntentFilter filter = new IntentFilter(DownloadService.ACTION_STATE_CHANGED);
+        LocalBroadcastManager.getInstance(this).registerReceiver(changesReceiver, filter);
     }
 
     @Override
@@ -77,12 +98,30 @@ public class MainActivity extends Activity {
         if (binder != null) {
             unbindService(connection);
         }
+
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(changesReceiver);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (permissions.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startDownload();
+        }
+    }
+
+    private void displayState() {
+        if (binder == null) {
+            downloadButton.setEnabled(true);
+            progressBar.setProgress(0);
+        } else {
+            downloadButton.setEnabled(false);
+            progressBar.setProgress(binder.getProgress());
+
+            if (binder.isCompleted()) {
+                unbindService(connection);
+                binder = null;
+                downloadButton.setEnabled(true);
+            }
         }
     }
 }

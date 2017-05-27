@@ -6,6 +6,7 @@ import android.os.Binder;
 import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.support.v4.content.LocalBroadcastManager;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -16,9 +17,11 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 
+
 public class DownloadService extends IntentService {
 
     public static final String EXTRA_FILE_NAME = "file_name";
+    public static final String ACTION_STATE_CHANGED = "download_state_changed";
 
     private boolean completed = false;
     private boolean withErrors = false;
@@ -57,6 +60,7 @@ public class DownloadService extends IntentService {
             progress = 0;
         } finally {
             completed = true;
+            notifyStateChanged();
         }
 
     }
@@ -76,15 +80,35 @@ public class DownloadService extends IntentService {
 
         byte[] buffer = new byte[8096];
         int readed;
+        int downloaded = 0;
 
         while ((readed = is.read(buffer)) > 0) {
             os.write(buffer, 0, readed);
+            downloaded += readed;
+
+            int percent = calculatePercent(size, downloaded);
+
+            if (percent != progress) {
+                progress = percent;
+                notifyStateChanged();
+            }
+
         }
 
         os.flush();
         os.close();
 
         connection.disconnect();
+    }
+
+    private int calculatePercent(int total, int current) {
+        int onePercent = Math.max(1, total / 100);
+        return Math.min(current / onePercent, 100);
+    }
+
+    private void notifyStateChanged() {
+        Intent data = new Intent(ACTION_STATE_CHANGED);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(data);
     }
 
     public class LocalBinder extends Binder {
